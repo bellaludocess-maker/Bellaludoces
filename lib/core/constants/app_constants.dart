@@ -39,13 +39,15 @@ class AppConstants {
   static const String firestoreDeliveryConfigDoc = 'delivery_config';
   static const String firestoreAdminVersionDoc = 'admin_app_version';
 
-  // Sincronização em Nuvem do Painel Admin (Opção 2 - Auto-Update / Live Cloud)
-  static const int currentAdminBuildNumber = 3;
-  static const String currentAdminVersionLabel = '2.1.0';
+  // Sincronização em Nuvem e Atualizador Automático via GitHub Releases (bellalu-apk)
+  static const int currentAdminBuildNumber = 4;
+  static const String currentAdminVersionLabel = '2.2.0';
   static const String adminPanelLiveUrl =
       'https://www.bellaludoces.com.br/painel/';
   static const String adminApkDownloadUrl =
-      'https://www.bellaludoces.com.br/painel/BellaLu_Painel_Admin.apk';
+      'https://github.com/bellaludocess-maker/bellalu-apk/releases/latest/download/BellaLu_Painel_Admin.apk';
+  static const String adminGithubReleaseApiUrl =
+      'https://api.github.com/repos/bellaludocess-maker/bellalu-apk/releases/latest';
 
   // Cloudinary oficial da Bella Lu Doces
   static const String cloudinaryCloudName = 'aq9vse7p';

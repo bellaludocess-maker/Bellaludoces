@@ -80,9 +80,11 @@ class _AdminScreenState extends State<AdminScreen> {
   CouponDiscountType _selectedCouponType = CouponDiscountType.percentage;
   bool _couponOncePerCustomer = true;
 
-  // Estado de verificação automática de atualização em nuvem (Opção 2)
+  // Estado de verificação automática de atualização via GitHub Releases / Nuvem
   bool _hasRemoteCloudUpdate = false;
+  bool _updateDialogShown = false;
   String _remoteCloudVersionLabel = '';
+  String _remoteApkDirectUrl = AppConstants.adminApkDownloadUrl;
 
   // Aba de filtro dos Pedidos Recebidos ('pending', 'completed', 'all')
   String _ordersTab = 'pending';
@@ -116,6 +118,48 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _checkRemoteCloudUpdate() async {
     if (kIsWeb || !widget.cloudConfig.isFirebaseConfigured) return;
+    int detectedBuild = 0;
+    String detectedLabel = '';
+    String detectedApkUrl = AppConstants.adminApkDownloadUrl;
+
+    // 1. Verifica GitHub Releases (repositório oficial bellalu-apk)
+    try {
+      final ghResponse = await http
+          .get(
+            Uri.parse(AppConstants.adminGithubReleaseApiUrl),
+            headers: {'Accept': 'application/vnd.github+json'},
+          )
+          .timeout(const Duration(seconds: 4));
+      if (ghResponse.statusCode == 200) {
+        final ghMap = jsonDecode(ghResponse.body);
+        if (ghMap is Map<String, dynamic>) {
+          final tagName = (ghMap['tag_name'] ?? '').toString().trim();
+          final buildMatch = RegExp(r'b(\d+)$|v(\d+)$').firstMatch(tagName);
+          final parsedTagBuild = buildMatch != null
+              ? int.tryParse(buildMatch.group(1) ?? buildMatch.group(2) ?? '0')
+              : int.tryParse(tagName.replaceAll(RegExp(r'[^0-9]'), ''));
+          if (parsedTagBuild != null && parsedTagBuild > detectedBuild) {
+            detectedBuild = parsedTagBuild;
+            detectedLabel = (ghMap['name'] ?? tagName).toString().trim();
+          }
+          final assets = ghMap['assets'];
+          if (assets is List && assets.isNotEmpty) {
+            for (final asset in assets) {
+              if (asset is Map &&
+                  (asset['browser_download_url'] ?? '')
+                      .toString()
+                      .endsWith('.apk')) {
+                detectedApkUrl =
+                    asset['browser_download_url'].toString().trim();
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Verifica também o version.json no painel web (/painel/version.json)
     try {
       final response = await http
           .get(
@@ -129,21 +173,82 @@ class _AdminScreenState extends State<AdminScreen> {
         if (decoded is Map<String, dynamic>) {
           final remoteBuild =
               int.tryParse((decoded['buildNumber'] ?? '0').toString()) ?? 0;
-          final remoteLabel =
-              (decoded['version'] ?? '').toString().trim();
-          if (remoteBuild > AppConstants.currentAdminBuildNumber && mounted) {
-            setState(() {
-              _hasRemoteCloudUpdate = true;
-              _remoteCloudVersionLabel = remoteLabel.isNotEmpty
-                  ? remoteLabel
-                  : 'v$remoteBuild';
-            });
+          final remoteLabel = (decoded['version'] ?? '').toString().trim();
+          final customApkUrl = (decoded['apkUrl'] ?? '').toString().trim();
+          if (remoteBuild > detectedBuild) {
+            detectedBuild = remoteBuild;
+            if (remoteLabel.isNotEmpty) detectedLabel = remoteLabel;
+          }
+          if (customApkUrl.isNotEmpty) {
+            detectedApkUrl = customApkUrl;
           }
         }
       }
-    } catch (_) {
-      // Silencioso caso esteja sem internet no momento
+    } catch (_) {}
+
+    if (detectedBuild > AppConstants.currentAdminBuildNumber && mounted) {
+      setState(() {
+        _hasRemoteCloudUpdate = true;
+        _remoteCloudVersionLabel =
+            detectedLabel.isNotEmpty ? detectedLabel : 'v$detectedBuild';
+        _remoteApkDirectUrl = detectedApkUrl;
+      });
+      if (!_updateDialogShown) {
+        _updateDialogShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showAutoUpdateDialog();
+        });
+      }
     }
+  }
+
+  Future<void> _showAutoUpdateDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.system_update_rounded,
+                color: BellaColors.pinkPrimary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nova Atualização ($_remoteCloudVersionLabel)!',
+                  style: const TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Uma nova versão do aplicativo Painel Bella Lu Doces está disponível no GitHub. Toque em "Baixar e Atualizar APK" para instalar agora mesmo!',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Depois'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _downloadLatestAdminApk();
+              },
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Baixar e Atualizar APK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _openLiveCloudPanel() async {
@@ -162,7 +267,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _downloadLatestAdminApk() async {
-    final uri = Uri.parse(AppConstants.adminApkDownloadUrl);
+    final uri = Uri.parse(_remoteApkDirectUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -1376,7 +1481,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Toque abaixo para abrir imediatamente a versão atualizada em nuvem (/painel) sem precisar instalar nada, ou baixe o APK atualizado.',
+                                  'Toque abaixo para baixar e instalar a nova versão do aplicativo direto do GitHub, ou abra o painel na nuvem.',
                                   style: textTheme.bodyMedium,
                                 ),
                                 const SizedBox(height: 8),
@@ -1385,22 +1490,22 @@ class _AdminScreenState extends State<AdminScreen> {
                                   runSpacing: 8,
                                   children: [
                                     ElevatedButton.icon(
-                                      onPressed: _openLiveCloudPanel,
-                                      icon: const Icon(
-                                        Icons.open_in_full_rounded,
-                                        size: 16,
-                                      ),
-                                      label: const Text(
-                                        'Abrir Painel Atualizado Agora',
-                                      ),
-                                    ),
-                                    OutlinedButton.icon(
                                       onPressed: _downloadLatestAdminApk,
                                       icon: const Icon(
                                         Icons.download_rounded,
                                         size: 16,
                                       ),
-                                      label: const Text('Baixar APK'),
+                                      label: const Text(
+                                        'Baixar e Atualizar APK',
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: _openLiveCloudPanel,
+                                      icon: const Icon(
+                                        Icons.open_in_full_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Abrir na Nuvem'),
                                     ),
                                   ],
                                 ),
