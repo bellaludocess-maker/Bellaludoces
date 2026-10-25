@@ -54,6 +54,7 @@ class CheckoutOrderModel {
   final String streetAddress;
   final String neighborhood;
   final String referencePoint;
+  final String pickupAddress;
   final PaymentMethod paymentMethod;
   final String changeFor;
   final String pixKey;
@@ -77,6 +78,7 @@ class CheckoutOrderModel {
     this.streetAddress = '',
     this.neighborhood = '',
     this.referencePoint = '',
+    this.pickupAddress = '',
     required this.paymentMethod,
     this.changeFor = '',
     this.pixKey = AppConstants.defaultPixKey,
@@ -134,6 +136,7 @@ class CheckoutOrderModel {
     String? streetAddress,
     String? neighborhood,
     String? referencePoint,
+    String? pickupAddress,
     PaymentMethod? paymentMethod,
     String? changeFor,
     String? pixKey,
@@ -157,6 +160,7 @@ class CheckoutOrderModel {
       streetAddress: streetAddress ?? this.streetAddress,
       neighborhood: neighborhood ?? this.neighborhood,
       referencePoint: referencePoint ?? this.referencePoint,
+      pickupAddress: pickupAddress ?? this.pickupAddress,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       changeFor: changeFor ?? this.changeFor,
       pixKey: pixKey ?? this.pixKey,
@@ -183,6 +187,7 @@ class CheckoutOrderModel {
       'streetAddress': streetAddress,
       'neighborhood': neighborhood,
       'referencePoint': referencePoint,
+      'pickupAddress': pickupAddress,
       'paymentMethod': paymentMethod.name,
       'changeFor': changeFor,
       'pixKey': pixKey,
@@ -220,6 +225,7 @@ class CheckoutOrderModel {
       streetAddress: (map['streetAddress'] ?? '') as String,
       neighborhood: (map['neighborhood'] ?? '') as String,
       referencePoint: (map['referencePoint'] ?? '') as String,
+      pickupAddress: (map['pickupAddress'] ?? '').toString(),
       paymentMethod: PaymentMethod.values.firstWhere(
         (p) => p.name == paymentName,
         orElse: () => PaymentMethod.pix,

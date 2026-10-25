@@ -124,18 +124,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verifica que inicia em Entrega (+ R$ 10,00) -> Total R$ 45,00
+    // e que por padrão a opção de Retirada está oculta enquanto não ativada no Admin
     expect(find.text('Finalizar Pedido'), findsOneWidget);
     expect(find.byKey(const ValueKey('checkout_total_text')), findsOneWidget);
     expect(find.text('R\$ 45,00'), findsOneWidget);
-
-    // Testa alternar para Retirada (R$ 0,00) -> Total R$ 35,00
-    await tester.tap(find.byKey(const ValueKey('select_pickup_mode')));
-    await tester.pumpAndSettle();
-    expect(find.text('Grátis (Combinar com a loja)'), findsOneWidget);
-
-    // Volta para Entrega (+ R$ 10,00) -> Total R$ 45,00
-    await tester.tap(find.byKey(const ValueKey('select_delivery_mode')));
-    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('select_pickup_mode')), findsNothing);
 
     // 2.5 Testa aplicar e remover Cupom de Desconto (VOLTE10 -> 10% OFF sobre R$ 35,00 = - R$ 3,50 -> Total R$ 41,50)
     final couponInput = find.byKey(const ValueKey('checkout_coupon_input'));
@@ -440,6 +433,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Taxa de Entrega (R\$ 12,50)'), findsOneWidget);
+
+    // 7.5. Testa ativar a Retirada de Encomendas no Local e cadastrar o Endereço Físico
+    final pickupSwitch = find.byKey(
+      const ValueKey('admin_pickup_enabled_switch'),
+    );
+    await Scrollable.ensureVisible(tester.element(pickupSwitch));
+    await tester.pumpAndSettle();
+    await tester.tap(pickupSwitch);
+    await tester.pumpAndSettle();
+
+    final pickupAddressInput = find.byKey(
+      const ValueKey('admin_pickup_address_input'),
+    );
+    await Scrollable.ensureVisible(tester.element(pickupAddressInput));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      pickupAddressInput,
+      'Rua das Rosas, 250 - Bairro Centro',
+    );
+
+    final savePickupBtn = find.byKey(
+      const ValueKey('admin_save_pickup_config_button'),
+    );
+    await Scrollable.ensureVisible(tester.element(savePickupBtn));
+    await tester.pumpAndSettle();
+    await tester.tap(savePickupBtn);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ativada'), findsOneWidget);
 
     // 8. Testa criar um novo Cupom de Desconto pelo Painel Admin
     final couponCodeInput = find.byKey(

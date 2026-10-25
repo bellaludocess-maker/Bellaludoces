@@ -250,6 +250,8 @@ class _BellaLuDocesAppState extends State<BellaLuDocesApp>
           pixHolderName: _catalogController.pixHolderName,
           pixBankName: _catalogController.pixBankName,
           deliveryFee: _catalogController.deliveryFee,
+          isPickupEnabled: _catalogController.isPickupEnabled,
+          pickupAddress: _catalogController.pickupAddress,
           availableCoupons: _catalogController.coupons,
           onOrderSubmitted: _catalogController.saveOrder,
         ),

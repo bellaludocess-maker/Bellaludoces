@@ -30,6 +30,8 @@ class FirestoreCatalogRepository implements CatalogRepository {
   String _cachedPixBankName = AppConstants.defaultPixBankName;
   String _cachedAdminPin = AppConstants.defaultAdminPin;
   double _cachedDeliveryFee = AppConstants.defaultDeliveryFee;
+  bool _cachedIsPickupEnabled = AppConstants.defaultPickupEnabled;
+  String _cachedPickupAddress = AppConstants.defaultPickupAddress;
   List<CouponModel> _cachedCoupons = [];
   bool _initialized = false;
   bool _categoriesInitialized = false;
@@ -542,35 +544,67 @@ class FirestoreCatalogRepository implements CatalogRepository {
     }
   }
 
-  @override
-  Future<double> getDeliveryFee() async {
-    if (config.isFirebaseConfigured) {
-      try {
-        final response = await _httpClient.get(
-          _buildDocumentUri(
-            AppConstants.firestoreSettingsCollection,
-            AppConstants.firestoreDeliveryConfigDoc,
-          ),
-        );
-        if (response.statusCode == 200) {
-          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-          final fields =
-              (decoded['fields'] as Map<String, dynamic>?) ?? const {};
-          final plainMap = _decodeFirestoreFields(fields);
-          final rawFee = plainMap['deliveryFee'];
-          if (rawFee is num && rawFee >= 0) {
-            _cachedDeliveryFee = rawFee.toDouble();
-          } else if (rawFee != null) {
-            final parsed = double.tryParse(rawFee.toString());
-            if (parsed != null && parsed >= 0) {
-              _cachedDeliveryFee = parsed;
-            }
+  Future<void> _fetchRemoteDeliveryAndPickupConfig() async {
+    if (!config.isFirebaseConfigured) return;
+    try {
+      final response = await _httpClient.get(
+        _buildDocumentUri(
+          AppConstants.firestoreSettingsCollection,
+          AppConstants.firestoreDeliveryConfigDoc,
+        ),
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final fields =
+            (decoded['fields'] as Map<String, dynamic>?) ?? const {};
+        final plainMap = _decodeFirestoreFields(fields);
+        final rawFee = plainMap['deliveryFee'];
+        if (rawFee is num && rawFee >= 0) {
+          _cachedDeliveryFee = rawFee.toDouble();
+        } else if (rawFee != null) {
+          final parsed = double.tryParse(rawFee.toString());
+          if (parsed != null && parsed >= 0) {
+            _cachedDeliveryFee = parsed;
           }
         }
-      } catch (_) {
-        // Mantém taxa padrão/cache se estiver offline
+        if (plainMap['isPickupEnabled'] is bool) {
+          _cachedIsPickupEnabled = plainMap['isPickupEnabled'] as bool;
+        }
+        if (plainMap['pickupAddress'] != null) {
+          _cachedPickupAddress = plainMap['pickupAddress'].toString().trim();
+        }
       }
+    } catch (_) {
+      // Mantém valores em cache se estiver offline
     }
+  }
+
+  Future<void> _patchRemoteDeliveryAndPickupConfig() async {
+    if (!config.isFirebaseConfigured) return;
+    try {
+      final firestoreDoc = {
+        'fields': _encodeFirestoreFields({
+          'deliveryFee': _cachedDeliveryFee,
+          'isPickupEnabled': _cachedIsPickupEnabled,
+          'pickupAddress': _cachedPickupAddress,
+        }),
+      };
+      await _httpClient.patch(
+        _buildDocumentUri(
+          AppConstants.firestoreSettingsCollection,
+          AppConstants.firestoreDeliveryConfigDoc,
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(firestoreDoc),
+      );
+    } catch (_) {
+      // Mantém em memória se estiver offline
+    }
+  }
+
+  @override
+  Future<double> getDeliveryFee() async {
+    await _fetchRemoteDeliveryAndPickupConfig();
     return _cachedDeliveryFee;
   }
 
@@ -578,26 +612,26 @@ class FirestoreCatalogRepository implements CatalogRepository {
   Future<void> saveDeliveryFee(double fee) async {
     if (fee < 0) return;
     _cachedDeliveryFee = double.parse(fee.toStringAsFixed(2));
+    await _patchRemoteDeliveryAndPickupConfig();
+  }
 
-    if (config.isFirebaseConfigured) {
-      try {
-        final firestoreDoc = {
-          'fields': _encodeFirestoreFields({
-            'deliveryFee': _cachedDeliveryFee,
-          }),
-        };
-        await _httpClient.patch(
-          _buildDocumentUri(
-            AppConstants.firestoreSettingsCollection,
-            AppConstants.firestoreDeliveryConfigDoc,
-          ),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(firestoreDoc),
-        );
-      } catch (_) {
-        // Mantém em memória se estiver offline
-      }
-    }
+  @override
+  Future<Map<String, dynamic>> getPickupConfig() async {
+    await _fetchRemoteDeliveryAndPickupConfig();
+    return {
+      'isPickupEnabled': _cachedIsPickupEnabled,
+      'pickupAddress': _cachedPickupAddress,
+    };
+  }
+
+  @override
+  Future<void> savePickupConfig({
+    required bool isPickupEnabled,
+    required String pickupAddress,
+  }) async {
+    _cachedIsPickupEnabled = isPickupEnabled;
+    _cachedPickupAddress = pickupAddress.trim();
+    await _patchRemoteDeliveryAndPickupConfig();
   }
 
   @override

@@ -71,7 +71,9 @@ class _AdminScreenState extends State<AdminScreen> {
   late final TextEditingController _pixHolderController;
   late final TextEditingController _pixBankController;
   late final TextEditingController _deliveryFeeController;
+  late final TextEditingController _pickupAddressController;
   late final TextEditingController _adminPinController;
+  bool _isPickupEnabled = AppConstants.defaultPickupEnabled;
 
   // Controllers para Cupons de Desconto
   final _couponCodeController = TextEditingController();
@@ -110,10 +112,28 @@ class _AdminScreenState extends State<AdminScreen> {
           .toStringAsFixed(2)
           .replaceAll('.', ','),
     );
+    _pickupAddressController = TextEditingController(
+      text: widget.catalogController.pickupAddress,
+    );
+    _isPickupEnabled = widget.catalogController.isPickupEnabled;
     _adminPinController = TextEditingController(
       text: widget.catalogController.adminPin,
     );
+    widget.catalogController.addListener(_syncStoreConfigControllers);
     _checkRemoteCloudUpdate();
+  }
+
+  void _syncStoreConfigControllers() {
+    if (!mounted) return;
+    if (_isPickupEnabled != widget.catalogController.isPickupEnabled) {
+      setState(() {
+        _isPickupEnabled = widget.catalogController.isPickupEnabled;
+      });
+    }
+    if (_pickupAddressController.text.trim().isEmpty &&
+        widget.catalogController.pickupAddress.isNotEmpty) {
+      _pickupAddressController.text = widget.catalogController.pickupAddress;
+    }
   }
 
   Future<void> _checkRemoteCloudUpdate() async {
@@ -273,6 +293,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   void dispose() {
+    widget.catalogController.removeListener(_syncStoreConfigControllers);
     _scrollController.dispose();
     _nameController.dispose();
     _priceController.dispose();
@@ -292,6 +313,7 @@ class _AdminScreenState extends State<AdminScreen> {
     _pixHolderController.dispose();
     _pixBankController.dispose();
     _deliveryFeeController.dispose();
+    _pickupAddressController.dispose();
     _adminPinController.dispose();
     _couponCodeController.dispose();
     _couponValueController.dispose();
@@ -1045,6 +1067,56 @@ class _AdminScreenState extends State<AdminScreen> {
             Expanded(
               child: Text(
                 'Taxa de entrega atualizada para ${CurrencyFormatter.formatBRL(parsed)}!',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSavePickupConfig({bool? overrideEnabled}) async {
+    final enabled = overrideEnabled ?? _isPickupEnabled;
+    final address = _pickupAddressController.text.trim();
+
+    if (enabled && address.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: BellaColors.errorRed,
+          content: Text(
+            'Informe o endereço físico do local para ativar a Retirada de Encomendas.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPickupEnabled = enabled;
+    });
+
+    await widget.catalogController.savePickupConfig(
+      isPickupEnabled: enabled,
+      pickupAddress: address,
+    );
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: BellaColors.successGreen,
+        content: Row(
+          children: [
+            const Icon(
+              Icons.storefront_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                enabled
+                    ? 'Retirada no local ATIVADA! Endereço: $address'
+                    : 'Retirada no local DESATIVADA (apenas Entrega ativa no site).',
               ),
             ),
           ],
@@ -2367,7 +2439,11 @@ class _AdminScreenState extends State<AdminScreen> {
                                                   )
                                                 else
                                                   Text(
-                                                    '• Retirada: Combinar com a loja',
+                                                    order.pickupAddress
+                                                            .trim()
+                                                            .isNotEmpty
+                                                        ? '• Retirada no local: ${order.pickupAddress.trim()}'
+                                                        : '• Retirada: Combinar com a loja',
                                                     style: textTheme.bodyMedium,
                                                   ),
                                                 if (order.discountAmount > 0)
@@ -2480,7 +2556,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // 5.5. Taxa de Entrega da Loja
+                        // 5.5. Taxa de Entrega e Retirada no Local
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(14),
@@ -2538,6 +2614,130 @@ class _AdminScreenState extends State<AdminScreen> {
                                   icon:
                                       const Icon(Icons.save_rounded, size: 18),
                                   label: const Text('Salvar Taxa de Entrega'),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  child: Divider(height: 1),
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.storefront_rounded,
+                                      color: BellaColors.pinkPrimary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Retirada de Encomendas no Local',
+                                        style: textTheme.titleLarge,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _isPickupEnabled
+                                            ? BellaColors.successGreen
+                                                .withValues(alpha: 0.14)
+                                            : BellaColors.pinkSoft,
+                                        borderRadius: BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                        _isPickupEnabled
+                                            ? 'Ativada'
+                                            : 'Desativada',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: _isPickupEnabled
+                                              ? BellaColors.successGreen
+                                              : BellaColors.mediumBrown,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Ative quando o espaço físico de retirada estiver pronto e informe o endereço para o cliente.',
+                                  style: textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Material(
+                                  color: BellaColors.pinkSoft.withValues(
+                                    alpha: 0.55,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: const BorderSide(
+                                      color: BellaColors.pinkBorder,
+                                    ),
+                                  ),
+                                  child: SwitchListTile(
+                                    key: const ValueKey(
+                                      'admin_pickup_enabled_switch',
+                                    ),
+                                    dense: true,
+                                    activeThumbColor: BellaColors.successGreen,
+                                    title: const Text(
+                                      'Permitir Retirada no Local no Checkout',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      _isPickupEnabled
+                                          ? 'Clientes podem escolher entre Entrega ou Retirada.'
+                                          : 'Apenas Entrega em Domicílio aparece no site.',
+                                      style: const TextStyle(fontSize: 11.5),
+                                    ),
+                                    value: _isPickupEnabled,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _isPickupEnabled = val;
+                                      });
+                                      if (!val) {
+                                        _handleSavePickupConfig(
+                                          overrideEnabled: false,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  key: const ValueKey(
+                                    'admin_pickup_address_input',
+                                  ),
+                                  controller: _pickupAddressController,
+                                  style: const TextStyle(fontSize: 13.5),
+                                  decoration: const InputDecoration(
+                                    labelText:
+                                        'Endereço Físico para Retirada',
+                                    hintText:
+                                        'Ex: Rua das Rosas, 250 - Bairro Centro',
+                                    prefixIcon: Icon(
+                                      Icons.location_on_rounded,
+                                      color: BellaColors.pinkPrimary,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ElevatedButton.icon(
+                                  key: const ValueKey(
+                                    'admin_save_pickup_config_button',
+                                  ),
+                                  onPressed: () => _handleSavePickupConfig(),
+                                  icon:
+                                      const Icon(Icons.save_rounded, size: 18),
+                                  label: const Text(
+                                    'Salvar Configuração de Retirada',
+                                  ),
                                 ),
                               ],
                             ),

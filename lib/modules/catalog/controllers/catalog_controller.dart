@@ -22,6 +22,8 @@ class CatalogController extends ChangeNotifier {
   String _pixBankName = AppConstants.defaultPixBankName;
   String _adminPin = AppConstants.defaultAdminPin;
   double _deliveryFee = AppConstants.defaultDeliveryFee;
+  bool _isPickupEnabled = AppConstants.defaultPickupEnabled;
+  String _pickupAddress = AppConstants.defaultPickupAddress;
   String _selectedCategoryId = 'all';
   String _searchQuery = '';
   bool _isLoading = false;
@@ -45,6 +47,8 @@ class CatalogController extends ChangeNotifier {
   String get pixBankName => _pixBankName;
   String get adminPin => _adminPin;
   double get deliveryFee => _deliveryFee;
+  bool get isPickupEnabled => _isPickupEnabled;
+  String get pickupAddress => _pickupAddress;
   String get selectedCategoryId => _selectedCategoryId;
   String get searchQuery => _searchQuery;
   bool get isLoading => _isLoading;
@@ -80,6 +84,11 @@ class CatalogController extends ChangeNotifier {
     _pixBankName = pixMap['pixBankName'] ?? AppConstants.defaultPixBankName;
     _adminPin = await repository.getAdminPin();
     _deliveryFee = await repository.getDeliveryFee();
+    final pickupMap = await repository.getPickupConfig();
+    _isPickupEnabled =
+        (pickupMap['isPickupEnabled'] as bool?) ?? AppConstants.defaultPickupEnabled;
+    _pickupAddress =
+        (pickupMap['pickupAddress'] ?? AppConstants.defaultPickupAddress).toString();
     _coupons = await repository.getCoupons();
     _orders = await repository.getOrders();
 
@@ -199,6 +208,22 @@ class CatalogController extends ChangeNotifier {
   Future<void> saveDeliveryFee(double fee) async {
     await repository.saveDeliveryFee(fee);
     _deliveryFee = await repository.getDeliveryFee();
+    notifyListeners();
+  }
+
+  Future<void> savePickupConfig({
+    required bool isPickupEnabled,
+    required String pickupAddress,
+  }) async {
+    await repository.savePickupConfig(
+      isPickupEnabled: isPickupEnabled,
+      pickupAddress: pickupAddress,
+    );
+    final pickupMap = await repository.getPickupConfig();
+    _isPickupEnabled =
+        (pickupMap['isPickupEnabled'] as bool?) ?? AppConstants.defaultPickupEnabled;
+    _pickupAddress =
+        (pickupMap['pickupAddress'] ?? AppConstants.defaultPickupAddress).toString();
     notifyListeners();
   }
 

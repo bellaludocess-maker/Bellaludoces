@@ -5,11 +5,11 @@
 
 ---
 
-## ⚠️ REGRA DE OURO DO USUÁRIO (OBRIGATÓRIA)
-1. **NUNCA execute deploy no Firebase Hosting ou publicação de Release do APK sem antes:**
-   - Implementar a alteração solicitada;
-   - Rodar `flutter test` e garantir que todos os testes passem;
-   - Apresentar o resumo ao usuário e **aguardar o comando explícito** (*"prossiga"*, *"pode fazer deploy"*).
+## ⚠️ REGRA DE OURO DO USUÁRIO (OBRIGATÓRIA — ECONOMIA DE TOKENS)
+1. **NUNCA rode `flutter test`, `flutter build`, deploy no Firebase Hosting ou publicação de Release do APK por conta própria.**
+   - Para economizar tokens e tempo, **só execute testes (`flutter test`) quando o usuário pedir explicitamente**;
+   - **Só execute build/deploy/APK quando o usuário autorizar explicitamente** (*"prossiga"*, *"pode fazer deploy"*).
+   - Ao receber um pedido de alteração no código, faça apenas a edição direta nos arquivos necessários, apresente um resumo curto e aguarde o comando do usuário.
 2. **Idioma:** Responda sempre em **Português (pt-BR)**, de forma clara, direta e objetiva.
 
 ---
@@ -42,7 +42,7 @@ O projeto possui **dois entrypoints independentes** compilados a partir da mesma
        - Botão de lixeira (`🗑️`) individual em cada pedido para apagar pedidos de teste ou antigos do Firestore.
        - Botão `Limpar Histórico` para apagar todos os pedidos concluídos de uma só vez.
      - **Configuração da Chave Pix da Loja** (Chave, Nome do Titular e Banco).
-     - **Taxa de Entrega Dinâmica** (altera o valor do frete em tempo real na vitrine e no Checkout).
+     - **Taxa de Entrega Dinâmica & Retirada no Local** (altera o valor do frete em tempo real na vitrine e no Checkout, e permite ativar/desativar a opção de **Retirada de Encomendas no Local** com cadastro do **Endereço Físico para Retirada**).
      - **Cupons de Desconto / Fidelidade** (cria cupons em `% Porcentagem`, `R$ Valor Fixo` ou `Frete Grátis`, com pedido mínimo opcional e trava de **uso único por telefone do cliente**).
      - **Segurança do Painel** (alteração do PIN de acesso).
      - **Atualizador Automático via GitHub Releases** (verifica na abertura se há nova versão no repositório `bellalu-apk` e exibe aviso para baixar e atualizar com 1 toque).

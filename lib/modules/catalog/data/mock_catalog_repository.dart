@@ -183,6 +183,8 @@ class MockCatalogRepository implements CatalogRepository {
   String _pixBankName = AppConstants.defaultPixBankName;
   String _adminPin = AppConstants.defaultAdminPin;
   double _deliveryFee = AppConstants.defaultDeliveryFee;
+  bool _isPickupEnabled = AppConstants.defaultPickupEnabled;
+  String _pickupAddress = AppConstants.defaultPickupAddress;
   final List<CheckoutOrderModel> _orders = [];
   final List<CouponModel> _coupons = [
     const CouponModel(
@@ -323,6 +325,23 @@ class MockCatalogRepository implements CatalogRepository {
     if (fee >= 0) {
       _deliveryFee = fee;
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getPickupConfig() async {
+    return {
+      'isPickupEnabled': _isPickupEnabled,
+      'pickupAddress': _pickupAddress,
+    };
+  }
+
+  @override
+  Future<void> savePickupConfig({
+    required bool isPickupEnabled,
+    required String pickupAddress,
+  }) async {
+    _isPickupEnabled = isPickupEnabled;
+    _pickupAddress = pickupAddress.trim();
   }
 
   @override

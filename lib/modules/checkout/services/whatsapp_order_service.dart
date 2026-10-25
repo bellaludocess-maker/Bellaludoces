@@ -48,9 +48,14 @@ class WhatsAppOrderService {
         buffer.writeln('*Referência:* ${order.referencePoint.trim()}');
       }
     } else {
-      buffer.writeln(
-        '*Modalidade:* Retirada (Combinar horário e retirada com a loja)',
-      );
+      if (order.pickupAddress.trim().isNotEmpty) {
+        buffer.writeln('*Modalidade:* Retirada no Local');
+        buffer.writeln('*Endereço para Retirada:* ${order.pickupAddress.trim()}');
+      } else {
+        buffer.writeln(
+          '*Modalidade:* Retirada (Combinar horário e retirada com a loja)',
+        );
+      }
     }
     buffer.writeln('');
 

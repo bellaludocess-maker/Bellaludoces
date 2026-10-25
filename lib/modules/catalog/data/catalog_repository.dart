@@ -34,9 +34,14 @@ abstract class CatalogRepository {
   Future<String> getAdminPin();
   Future<void> saveAdminPin(String newPin);
 
-  /// Configuração dinâmica da Taxa de Entrega da loja.
+  /// Configuração dinâmica da Taxa de Entrega e Retirada no Local.
   Future<double> getDeliveryFee();
   Future<void> saveDeliveryFee(double fee);
+  Future<Map<String, dynamic>> getPickupConfig();
+  Future<void> savePickupConfig({
+    required bool isPickupEnabled,
+    required String pickupAddress,
+  });
 
   /// Gestão de Cupons de Desconto / Fidelidade.
   Future<List<CouponModel>> getCoupons();

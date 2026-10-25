@@ -20,6 +20,8 @@ class CheckoutScreen extends StatefulWidget {
   final String pixHolderName;
   final String pixBankName;
   final double deliveryFee;
+  final bool isPickupEnabled;
+  final String pickupAddress;
   final List<CouponModel> availableCoupons;
   final Future<void> Function(CheckoutOrderModel order)? onOrderSubmitted;
 
@@ -32,6 +34,8 @@ class CheckoutScreen extends StatefulWidget {
     this.pixHolderName = AppConstants.defaultPixHolderName,
     this.pixBankName = AppConstants.defaultPixBankName,
     this.deliveryFee = AppConstants.defaultDeliveryFee,
+    this.isPickupEnabled = AppConstants.defaultPickupEnabled,
+    this.pickupAddress = AppConstants.defaultPickupAddress,
     this.availableCoupons = const [],
     this.onOrderSubmitted,
   });
@@ -79,9 +83,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
+  DeliveryMethod get _effectiveDeliveryMethod =>
+      widget.isPickupEnabled ? _deliveryMethod : DeliveryMethod.delivery;
+
   double get _subtotal => widget.cartController.subtotal;
   double get _deliveryFee =>
-      _deliveryMethod == DeliveryMethod.delivery ? widget.deliveryFee : 0.0;
+      _effectiveDeliveryMethod == DeliveryMethod.delivery
+          ? widget.deliveryFee
+          : 0.0;
 
   double get _discountAmount {
     final coupon = _appliedCoupon;
@@ -176,10 +185,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       createdAt: DateTime.now().toIso8601String(),
       customerName: _nameController.text,
       customerPhone: _phoneController.text,
-      deliveryMethod: _deliveryMethod,
+      deliveryMethod: _effectiveDeliveryMethod,
       streetAddress: _streetController.text,
       neighborhood: _neighborhoodController.text,
       referencePoint: _referenceController.text,
+      pickupAddress: _effectiveDeliveryMethod == DeliveryMethod.pickup
+          ? widget.pickupAddress.trim()
+          : '',
       paymentMethod: _paymentMethod,
       changeFor: _changeController.text,
       pixKey: widget.pixKey,
@@ -409,7 +421,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Alternador Entrega (+ R$ 10,00) vs Retirada (R$ 0,00)
+                  // 1. Alternador Entrega vs Retirada (Retirada só aparece quando ativada no Painel)
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(18),
@@ -427,10 +439,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 child: _DeliveryOptionCard(
                                   key: const ValueKey('select_delivery_mode'),
                                   icon: Icons.delivery_dining_rounded,
-                                  title: 'Entrega',
+                                  title: 'Entrega em Domicílio',
                                   subtitle:
                                       '+ ${CurrencyFormatter.formatBRL(widget.deliveryFee)}',
-                                  isSelected: _deliveryMethod ==
+                                  isSelected: _effectiveDeliveryMethod ==
                                       DeliveryMethod.delivery,
                                   onTap: () => setState(
                                     () => _deliveryMethod =
@@ -438,24 +450,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _DeliveryOptionCard(
-                                  key: const ValueKey('select_pickup_mode'),
-                                  icon: Icons.storefront_rounded,
-                                  title: 'Retirada',
-                                  subtitle: 'Combinar com a loja',
-                                  isSelected:
-                                      _deliveryMethod == DeliveryMethod.pickup,
-                                  onTap: () => setState(
-                                    () =>
-                                        _deliveryMethod = DeliveryMethod.pickup,
+                              if (widget.isPickupEnabled) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _DeliveryOptionCard(
+                                    key: const ValueKey('select_pickup_mode'),
+                                    icon: Icons.storefront_rounded,
+                                    title: 'Retirada',
+                                    subtitle: widget.pickupAddress
+                                            .trim()
+                                            .isNotEmpty
+                                        ? 'Retirar no local (Grátis)'
+                                        : 'Combinar com a loja',
+                                    isSelected: _effectiveDeliveryMethod ==
+                                        DeliveryMethod.pickup,
+                                    onTap: () => setState(
+                                      () => _deliveryMethod =
+                                          DeliveryMethod.pickup,
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
-                          if (_deliveryMethod == DeliveryMethod.pickup) ...[
+                          if (_effectiveDeliveryMethod ==
+                              DeliveryMethod.pickup) ...[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -466,16 +485,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     Border.all(color: BellaColors.pinkBorder),
                               ),
                               child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Icon(
-                                    Icons.info_outline_rounded,
+                                    Icons.location_on_rounded,
                                     color: BellaColors.pinkPrimary,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'Retirada sem taxa! Ao enviar o pedido no WhatsApp, combine o horário e local de retirada com a loja.',
+                                      widget.pickupAddress.trim().isNotEmpty
+                                          ? 'Endereço para Retirada: ${widget.pickupAddress.trim()}\nRetirada sem taxa! Ao confirmar no WhatsApp, combine o horário de retirada.'
+                                          : 'Retirada sem taxa! Ao enviar o pedido no WhatsApp, combine o horário e local de retirada com a loja.',
+                                      key: const ValueKey(
+                                        'checkout_pickup_address_info',
+                                      ),
                                       style: textTheme.bodyMedium?.copyWith(
                                         color: BellaColors.darkChocolate,
                                         fontWeight: FontWeight.w600,
@@ -545,7 +570,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 16),
 
                   // 3. Endereço de Entrega (Exibido apenas se Entrega estiver selecionada)
-                  if (_deliveryMethod == DeliveryMethod.delivery) ...[
+                  if (_effectiveDeliveryMethod == DeliveryMethod.delivery) ...[
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(18),
@@ -567,7 +592,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 prefixIcon: Icon(Icons.location_on_outlined),
                               ),
                               validator: (value) {
-                                if (_deliveryMethod ==
+                                if (_effectiveDeliveryMethod ==
                                         DeliveryMethod.delivery &&
                                     (value == null || value.trim().isEmpty)) {
                                   return 'Informe o endereço para entrega.';
@@ -587,7 +612,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 prefixIcon: Icon(Icons.map_outlined),
                               ),
                               validator: (value) {
-                                if (_deliveryMethod ==
+                                if (_effectiveDeliveryMethod ==
                                         DeliveryMethod.delivery &&
                                     (value == null || value.trim().isEmpty)) {
                                   return 'Informe o bairro para entrega.';
@@ -620,7 +645,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _deliveryMethod == DeliveryMethod.delivery
+                            _effectiveDeliveryMethod == DeliveryMethod.delivery
                                 ? '4. Forma de Pagamento'
                                 : '3. Forma de Pagamento',
                             style: textTheme.titleLarge,

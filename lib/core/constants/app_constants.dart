@@ -19,9 +19,11 @@ class AppConstants {
   static const String instagramHandle = '@Bellalu.doces';
   static const String instagramUrl = 'https://www.instagram.com/bellalu.doces/';
 
-  // Regras de Entrega e Pagamento
+  // Regras de Entrega, Retirada e Pagamento
   static const double defaultDeliveryFee = 10.00;
   static const double pickupFee = 0.00;
+  static const bool defaultPickupEnabled = false;
+  static const String defaultPickupAddress = '';
   static const String defaultPixKey = '34987193964';
   static const String defaultPixHolderName = 'Lucineide da Silva';
   static const String defaultPixBankName = 'Nubank';
@@ -40,8 +42,8 @@ class AppConstants {
   static const String firestoreAdminVersionDoc = 'admin_app_version';
 
   // Sincronização em Nuvem e Atualizador Automático via GitHub Releases (bellalu-apk)
-  static const int currentAdminBuildNumber = 4;
-  static const String currentAdminVersionLabel = '2.2.0';
+  static const int currentAdminBuildNumber = 5;
+  static const String currentAdminVersionLabel = '2.3.0';
   static const String adminPanelLiveUrl =
       'https://www.bellaludoces.com.br/painel/';
   static const String adminApkDownloadUrl =
