@@ -124,11 +124,12 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verifica que inicia em Entrega (+ R$ 10,00) -> Total R$ 45,00
-    // e que por padrão a opção de Retirada está oculta enquanto não ativada no Admin
+    // e que os 2 cards ficam lado a lado, com Retirar na Loja apagado ("Desculpe, Retirada indisponível") quando desligado
     expect(find.text('Finalizar Pedido'), findsOneWidget);
     expect(find.byKey(const ValueKey('checkout_total_text')), findsOneWidget);
     expect(find.text('R\$ 45,00'), findsOneWidget);
-    expect(find.byKey(const ValueKey('select_pickup_mode')), findsNothing);
+    expect(find.byKey(const ValueKey('select_pickup_mode')), findsOneWidget);
+    expect(find.text('Desculpe, Retirada indisponível'), findsOneWidget);
 
     // 2.5 Testa aplicar e remover Cupom de Desconto (VOLTE10 -> 10% OFF sobre R$ 35,00 = - R$ 3,50 -> Total R$ 41,50)
     final couponInput = find.byKey(const ValueKey('checkout_coupon_input'));

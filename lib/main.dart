@@ -240,20 +240,25 @@ class _BellaLuDocesAppState extends State<BellaLuDocesApp>
   }
 
   void _openCheckoutScreen(BuildContext context) {
+    // Recarrega as configurações mais recentes da nuvem (Taxa, Retirada, Pix e Cupons) ao abrir o Checkout
+    _catalogController.loadCatalog();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => CheckoutScreen(
-          cartController: _cartController,
-          whatsAppService:
-              widget.whatsAppService ?? const WhatsAppOrderService(),
-          pixKey: _catalogController.pixKey,
-          pixHolderName: _catalogController.pixHolderName,
-          pixBankName: _catalogController.pixBankName,
-          deliveryFee: _catalogController.deliveryFee,
-          isPickupEnabled: _catalogController.isPickupEnabled,
-          pickupAddress: _catalogController.pickupAddress,
-          availableCoupons: _catalogController.coupons,
-          onOrderSubmitted: _catalogController.saveOrder,
+        builder: (_) => ListenableBuilder(
+          listenable: _catalogController,
+          builder: (context, _) => CheckoutScreen(
+            cartController: _cartController,
+            whatsAppService:
+                widget.whatsAppService ?? const WhatsAppOrderService(),
+            pixKey: _catalogController.pixKey,
+            pixHolderName: _catalogController.pixHolderName,
+            pixBankName: _catalogController.pixBankName,
+            deliveryFee: _catalogController.deliveryFee,
+            isPickupEnabled: _catalogController.isPickupEnabled,
+            pickupAddress: _catalogController.pickupAddress,
+            availableCoupons: _catalogController.coupons,
+            onOrderSubmitted: _catalogController.saveOrder,
+          ),
         ),
       ),
     );

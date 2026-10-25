@@ -421,7 +421,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Alternador Entrega vs Retirada (Retirada só aparece quando ativada no Painel)
+                  // 1. Alternador Entrega vs Retirada (Os 2 cards ficam sempre lado a lado; Retirada acende ou apaga conforme o Painel Admin)
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(18),
@@ -434,6 +434,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                           const SizedBox(height: 12),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: _DeliveryOptionCard(
@@ -442,6 +443,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   title: 'Entrega em Domicílio',
                                   subtitle:
                                       '+ ${CurrencyFormatter.formatBRL(widget.deliveryFee)}',
+                                  isEnabled: true,
                                   isSelected: _effectiveDeliveryMethod ==
                                       DeliveryMethod.delivery,
                                   onTap: () => setState(
@@ -450,64 +452,97 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   ),
                                 ),
                               ),
-                              if (widget.isPickupEnabled) ...[
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _DeliveryOptionCard(
-                                    key: const ValueKey('select_pickup_mode'),
-                                    icon: Icons.storefront_rounded,
-                                    title: 'Retirada',
-                                    subtitle: widget.pickupAddress
-                                            .trim()
-                                            .isNotEmpty
-                                        ? 'Retirar no local (Grátis)'
-                                        : 'Combinar com a loja',
-                                    isSelected: _effectiveDeliveryMethod ==
-                                        DeliveryMethod.pickup,
-                                    onTap: () => setState(
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _DeliveryOptionCard(
+                                  key: const ValueKey('select_pickup_mode'),
+                                  icon: Icons.storefront_rounded,
+                                  title: 'Retirar na Loja',
+                                  subtitle: widget.isPickupEnabled
+                                      ? 'Grátis (Retirar no local)'
+                                      : 'Desculpe, Retirada indisponível',
+                                  badgeLabel: widget.isPickupEnabled
+                                      ? 'Disponível'
+                                      : 'Indisponível',
+                                  isEnabled: widget.isPickupEnabled,
+                                  isSelected: _effectiveDeliveryMethod ==
+                                      DeliveryMethod.pickup,
+                                  onTap: () {
+                                    if (!widget.isPickupEnabled) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          backgroundColor: BellaColors.errorRed,
+                                          content: Text(
+                                            'Desculpe, Retirada indisponível no momento.',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setState(
                                       () => _deliveryMethod =
                                           DeliveryMethod.pickup,
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
-                              ],
+                              ),
                             ],
                           ),
-                          if (_effectiveDeliveryMethod ==
-                              DeliveryMethod.pickup) ...[
+                          if (widget.isPickupEnabled) ...[
                             const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: BellaColors.pinkSoft,
-                                borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: BellaColors.pinkBorder),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => setState(
+                                () => _deliveryMethod = DeliveryMethod.pickup,
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on_rounded,
-                                    color: BellaColors.pinkPrimary,
-                                    size: 20,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: _effectiveDeliveryMethod ==
+                                          DeliveryMethod.pickup
+                                      ? BellaColors.pinkSoft
+                                      : BellaColors.pinkSoft.withValues(
+                                          alpha: 0.45,
+                                        ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _effectiveDeliveryMethod ==
+                                            DeliveryMethod.pickup
+                                        ? BellaColors.pinkPrimary
+                                        : BellaColors.pinkBorder,
+                                    width: _effectiveDeliveryMethod ==
+                                            DeliveryMethod.pickup
+                                        ? 1.6
+                                        : 1.0,
                                   ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      widget.pickupAddress.trim().isNotEmpty
-                                          ? 'Endereço para Retirada: ${widget.pickupAddress.trim()}\nRetirada sem taxa! Ao confirmar no WhatsApp, combine o horário de retirada.'
-                                          : 'Retirada sem taxa! Ao enviar o pedido no WhatsApp, combine o horário e local de retirada com a loja.',
-                                      key: const ValueKey(
-                                        'checkout_pickup_address_info',
-                                      ),
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        color: BellaColors.darkChocolate,
-                                        fontWeight: FontWeight.w600,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_rounded,
+                                      color: BellaColors.pinkPrimary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        widget.pickupAddress.trim().isNotEmpty
+                                            ? '📍 Retirar na Loja — Endereço: ${widget.pickupAddress.trim()}\nRetirada sem taxa! Ao confirmar no WhatsApp, combine o horário de retirada.'
+                                            : '📍 Retirar na Loja disponível (Sem taxa)! Ao enviar o pedido no WhatsApp, combine o horário de retirada.',
+                                        key: const ValueKey(
+                                          'checkout_pickup_address_info',
+                                        ),
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: BellaColors.darkChocolate,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -1153,6 +1188,8 @@ class _DeliveryOptionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final String? badgeLabel;
+  final bool isEnabled;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -1161,6 +1198,8 @@ class _DeliveryOptionCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.badgeLabel,
+    this.isEnabled = true,
     required this.isSelected,
     required this.onTap,
   });
@@ -1169,47 +1208,88 @@ class _DeliveryOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? BellaColors.pinkSoft : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color:
-                isSelected ? BellaColors.pinkPrimary : BellaColors.pinkBorder,
-            width: isSelected ? 2 : 1,
+    return Opacity(
+      opacity: isEnabled ? 1.0 : 0.55,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: !isEnabled
+                ? const Color(0xFFF3ECEE)
+                : isSelected
+                    ? BellaColors.pinkSoft
+                    : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: !isEnabled
+                  ? BellaColors.pinkBorder
+                  : isSelected
+                      ? BellaColors.pinkPrimary
+                      : BellaColors.pinkBorder,
+              width: isSelected && isEnabled ? 2 : 1,
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: isSelected
-                  ? BellaColors.pinkPrimary
-                  : BellaColors.mediumBrown,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+          child: Column(
+            children: [
+              if (badgeLabel != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isEnabled
+                        ? BellaColors.successGreen.withValues(alpha: 0.14)
+                        : const Color(0xFFFFE5E5),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    badgeLabel!,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: isEnabled
+                          ? BellaColors.successGreen
+                          : BellaColors.errorRed,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
+              Icon(
+                icon,
+                size: 28,
+                color: !isEnabled
+                    ? BellaColors.mediumBrown
+                    : isSelected
+                        ? BellaColors.pinkPrimary
+                        : BellaColors.mediumBrown,
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: textTheme.bodyMedium?.copyWith(
-                color: BellaColors.pinkDark,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: isEnabled
+                      ? BellaColors.darkChocolate
+                      : BellaColors.mediumBrown,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: isEnabled ? BellaColors.pinkDark : BellaColors.errorRed,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -42,8 +42,8 @@ class AppConstants {
   static const String firestoreAdminVersionDoc = 'admin_app_version';
 
   // Sincronização em Nuvem e Atualizador Automático via GitHub Releases (bellalu-apk)
-  static const int currentAdminBuildNumber = 5;
-  static const String currentAdminVersionLabel = '2.3.0';
+  static const int currentAdminBuildNumber = 6;
+  static const String currentAdminVersionLabel = '2.3.1';
   static const String adminPanelLiveUrl =
       'https://www.bellaludoces.com.br/painel/';
   static const String adminApkDownloadUrl =

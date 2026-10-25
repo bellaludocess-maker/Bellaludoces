@@ -1079,18 +1079,6 @@ class _AdminScreenState extends State<AdminScreen> {
     final enabled = overrideEnabled ?? _isPickupEnabled;
     final address = _pickupAddressController.text.trim();
 
-    if (enabled && address.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: BellaColors.errorRed,
-          content: Text(
-            'Informe o endereço físico do local para ativar a Retirada de Encomendas.',
-          ),
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isPickupEnabled = enabled;
     });
@@ -1115,8 +1103,10 @@ class _AdminScreenState extends State<AdminScreen> {
             Expanded(
               child: Text(
                 enabled
-                    ? 'Retirada no local ATIVADA! Endereço: $address'
-                    : 'Retirada no local DESATIVADA (apenas Entrega ativa no site).',
+                    ? (address.isNotEmpty
+                        ? 'Retirada na Loja ATIVADA! Endereço: $address'
+                        : 'Retirada na Loja ATIVADA! Digite e salve o endereço físico abaixo.')
+                    : 'Retirada na Loja DESATIVADA (exibida como indisponível no site).',
               ),
             ),
           ],
@@ -2691,54 +2681,55 @@ class _AdminScreenState extends State<AdminScreen> {
                                     ),
                                     subtitle: Text(
                                       _isPickupEnabled
-                                          ? 'Clientes podem escolher entre Entrega ou Retirada.'
-                                          : 'Apenas Entrega em Domicílio aparece no site.',
+                                          ? 'Ligado: Card "Retirar na Loja" aceso no site com endereço.'
+                                          : 'Desligado: Card "Retirar na Loja" apagado (Desculpe, Retirada indisponível).',
                                       style: const TextStyle(fontSize: 11.5),
                                     ),
                                     value: _isPickupEnabled,
                                     onChanged: (val) {
-                                      setState(() {
-                                        _isPickupEnabled = val;
-                                      });
-                                      if (!val) {
-                                        _handleSavePickupConfig(
-                                          overrideEnabled: false,
-                                        );
-                                      }
+                                      _handleSavePickupConfig(
+                                        overrideEnabled: val,
+                                      );
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                TextField(
-                                  key: const ValueKey(
-                                    'admin_pickup_address_input',
-                                  ),
-                                  controller: _pickupAddressController,
-                                  style: const TextStyle(fontSize: 13.5),
-                                  decoration: const InputDecoration(
-                                    labelText:
-                                        'Endereço Físico para Retirada',
-                                    hintText:
-                                        'Ex: Rua das Rosas, 250 - Bairro Centro',
-                                    prefixIcon: Icon(
-                                      Icons.location_on_rounded,
-                                      color: BellaColors.pinkPrimary,
-                                      size: 18,
+                                if (_isPickupEnabled) ...[
+                                  const SizedBox(height: 10),
+                                  TextField(
+                                    key: const ValueKey(
+                                      'admin_pickup_address_input',
+                                    ),
+                                    controller: _pickupAddressController,
+                                    style: const TextStyle(fontSize: 13.5),
+                                    decoration: const InputDecoration(
+                                      labelText:
+                                          'Endereço Físico para Retirada na Loja',
+                                      hintText:
+                                          'Ex: Rua das Rosas, 250 - Bairro Centro',
+                                      prefixIcon: Icon(
+                                        Icons.location_on_rounded,
+                                        color: BellaColors.pinkPrimary,
+                                        size: 18,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                ElevatedButton.icon(
-                                  key: const ValueKey(
-                                    'admin_save_pickup_config_button',
+                                  const SizedBox(height: 8),
+                                  ElevatedButton.icon(
+                                    key: const ValueKey(
+                                      'admin_save_pickup_config_button',
+                                    ),
+                                    onPressed: () => _handleSavePickupConfig(
+                                      overrideEnabled: true,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.save_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Salvar Endereço de Retirada',
+                                    ),
                                   ),
-                                  onPressed: () => _handleSavePickupConfig(),
-                                  icon:
-                                      const Icon(Icons.save_rounded, size: 18),
-                                  label: const Text(
-                                    'Salvar Configuração de Retirada',
-                                  ),
-                                ),
+                                ],
                               ],
                             ),
                           ),
